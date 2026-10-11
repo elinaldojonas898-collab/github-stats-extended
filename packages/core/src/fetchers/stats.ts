@@ -183,6 +183,24 @@ const fetchTotalItems = (
  * @see https://github.com/anuraghazra/github-readme-stats/issues/92#issuecomment-661026467
  * @see https://github.com/anuraghazra/github-readme-stats/pull/211
  */
+const isSearchValidationFailure = (
+  status: number | undefined,
+  data: { message?: string; errors?: Array<{ message?: string }> } | undefined,
+): boolean => {
+  if (status !== 422) {
+    return false;
+  }
+
+  const messages = [
+    typeof data?.message === "string" ? data.message : "",
+    ...(data?.errors ?? []).map((error) => error?.message ?? ""),
+  ].join(" ");
+
+  return /qualifiers only|cannot be searched|do not have permission|users do not exist|not exist/i.test(
+    messages,
+  );
+};
+
 const totalItemsFetcher = async (
   username: string,
   repo: Array<string>,
@@ -196,9 +214,9 @@ const totalItemsFetcher = async (
     throw new Error("Invalid username provided.");
   }
 
-  let res: AxiosResponse<{ total_count?: number }>;
+  let res: AxiosResponse<{ total_count?: number; message?: string; errors?: Array<{ message?: string }> }>;
   try {
-    res = await retryer<{ total_count?: number }>(
+    res = await retryer<{ total_count?: number; message?: string; errors?: Array<{ message?: string }> }>(
       fetchTotalItems,
       { login: username, repo, owner, type, filter },
       pat,
@@ -206,6 +224,13 @@ const totalItemsFetcher = async (
   } catch (err) {
     logger.log(err);
     throw err;
+  }
+
+  if (isSearchValidationFailure(res.status, res.data)) {
+    logger.log(
+      `GitHub search rejected ${type} lookup for '${username}'. Returning 0 for this count.`,
+    );
+    return 0;
   }
 
   const totalCount = res.data.total_count;
