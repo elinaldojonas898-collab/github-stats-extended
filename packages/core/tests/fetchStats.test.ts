@@ -412,20 +412,18 @@ describe("Test fetchStats", () => {
   });
 
   it("should return zero counts when GitHub rejects a user-scoped search", async () => {
-    mock
-      .onGet(/https:\/\/api\.github\.com\/search\/issues.*/)
-      .reply(422, {
-        message: "Validation Failed",
-        errors: [
-          {
-            message:
-              "The listed users cannot be searched either because the users do not exist or you do not have permission to view the users.",
-            resource: "Search",
-            field: "q",
-            code: "invalid",
-          },
-        ],
-      });
+    mock.onGet(/https:\/\/api\.github\.com\/search\/issues.*/).reply(422, {
+      message: "Validation Failed",
+      errors: [
+        {
+          message:
+            "The listed users cannot be searched either because the users do not exist or you do not have permission to view the users.",
+          resource: "Search",
+          field: "q",
+          code: "invalid",
+        },
+      ],
+    });
 
     const stats = await fetchStats(
       "anuraghazra",
